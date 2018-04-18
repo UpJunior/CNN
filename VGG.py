@@ -1,29 +1,15 @@
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+from numpy import array
+from Tool import *
 image_SIZE = 224 # image size
-image_PATH = "/home/linux/Desktop/test1/11.jpg"
-image_raw_data = tf.gfile.FastGFile("/home/linux/Desktop/test11.jpg", 'rb').read()
-# _inputRGB = tf.placeholder(tf.float32,    #_inputRGB  initial
-#                               [None,
-#                               224,224,3])
-def load_image(path):
-    # load image
-    img = Image.open(path)
-    width, height = img.size
-    if(width > image_SIZE and height > image_SIZE):
-        tmp_max = max(width, height)
-        tmp_min = min(width, height)
-        x = int((tmp_max - width)/2)
-        y = int((tmp_max - height)/2)
-        resized_img = img.crop((x, y, tmp_min+x, tmp_min+y))
-    resized_img = img.resize((image_SIZE, image_SIZE))
-    return resized_img
+
 def weight_variable(shape):
-    initial = tf.random_normal(shape, seed = 0.5)
+    initial = tf.zeros(shape)
     return tf.Variable(initial)
 def bias_variable(shape):
-    initial = tf.constant(0.1, shape =shape)
+    initial = tf.zeros(shape)
     return tf.Variable(initial)
 def conv2d(x, w):
     return tf.nn.conv2d(x, w, strides=[1, 1, 1, 1], padding='SAME')
@@ -120,53 +106,44 @@ def softmax_layer(x):
     b_sf = bias_variable([2])
     h_sf = tf.nn.softmax(tf.matmul( x , W_sf) + b_sf)
     return h_sf
+def getbatch_xy(num):
+    path = "/home/linux/Desktop/train/"
+    batch_x = []
+    batch_y = []
+    for index in range(num):
+        cat_path = path + "cat." + str(index) + ".jpg"
+        input_image = Tool.load_image(cat_path) #cat
+        image_arr = tf.to_float(array(input_image), name='ToFloat')
+       # image_featuremap = tf.reshape(image_arr,[1,image_SIZE,image_SIZE,3])
+        batch_x.append(image_arr)
+        batch_y.append([1,0])
+        print (cat_path)
+    return batch_x, batch_y
+
 # 这一行设置 gpu 随使用增长，我一般都会加上
 # config.gpu_options.allow_growth = True
+#image process
+
+inputRGB = tf.placeholder(tf.float32,[None, image_SIZE,image_SIZE,3])
+classf  = tf.placeholder("float", [None , 2])
+
+layer_data1 = cov_layer1(inputRGB,  64)
+layer_data2 = conv_layer2(layer_data1, 128)
+layer_data3 = conv_layer3(layer_data2, 256)
+layer_data4 = conv_layer4(layer_data3, 512)
+layer_data5 = conv_layer5(layer_data4, 512)
+layer_data6 =fc_layer(layer_data5, 4096)
+predict = softmax_layer(layer_data6)
+
+cross_entropy = -tf.reduce_sum(classf*tf.log(predict))
+train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
+
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-
-
-img_data = tf.image.decode_jpeg(image_raw_data)
-image_arr=tf.image.convert_image_dtype(img_data,tf.float32)
-image_featuremap = tf.reshape(image_arr,[1,image_SIZE,image_SIZE,3])
-layer_data1 = cov_layer1(image_featuremap,  64)
-
-layer_data2 = conv_layer2(layer_data1, 128)
-print (layer_data2)
-layer_data3 = conv_layer3(layer_data2, 256)
-print (layer_data3)
-layer_data4 = conv_layer4(layer_data3, 512)
-print (layer_data4)
-layer_data5 = conv_layer5(layer_data4, 512)
-print (layer_data5)
-layer_data6 =fc_layer(layer_data5, 4096)
-print (layer_data6)
-
-sm_data = softmax_layer(layer_data6)
-print (sm_data)
 sess.run(tf.global_variables_initializer())
-print (sess.run(layer_data6))
-print (sess.run(sm_data))
-# print(sess.run(sm_data))
 
-# with tf.Session() as sess:
-#     init = tf.global_variables_initializer()
-#     sess.run(init)
-#     with tf.device("/gpu:0"):
-#         img_data = tf.image.decode_jpeg(image_raw_data)
-#         image_arr=tf.image.convert_image_dtype(img_data,tf.float32)
-#         image_featuremap = tf.reshape(image_arr,[-1,image_SIZE,image_SIZE,3])
-#         layer_data1 = cov_layer1(image_featuremap,  64)
-#         print (layer_data1)
-#         layer_data2 = conv_layer2(layer_data1, 128)
-#         print (layer_data2)
-#         layer_data3 = conv_layer3(layer_data2, 256)
-#         print (layer_data3)
-#         layer_data4 = conv_layer4(layer_data3, 512)
-#         print (layer_data4)
-#         layer_data5 = conv_layer5(layer_data4, 512)
-#         print (layer_data5)
-#         layer_data6 =fc_layer(layer_data5, 4096)
-#         print (layer_data6)
-#         sm_data = tf.nn.softmax(layer_data6)
-#         print (sm_data)
+for index in range(1000):
+    # print(sess.run(sm_data))
+    batch_x , batch_y = getbatch_xy(1)#>????????
+    sess.run(train_step, feed_dict = {inputRGB: batch_x, classf: batch_y})
+
