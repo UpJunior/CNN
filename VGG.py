@@ -117,11 +117,8 @@ def getbatch_xy(num):
         image_arr = tf.to_float(array(input_image), name='ToFloat')
         image_featuremap.append(image_arr)
         predict_arr.append([0.,1.])
-    #print (predict_arr)
     batch_x = tf.reshape(image_featuremap,[-1,image_SIZE,image_SIZE,3])
     batch_y = tf.reshape(predict_arr, [-1,2])
-    #print (batch_x)
-    #print (batch_y)
     return batch_x, batch_y
 
 #因为需要重复输入x，而每建一个x就会生成一个结点，计算图的效率会低。所以使用占位符
