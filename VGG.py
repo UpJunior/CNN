@@ -108,22 +108,23 @@ def softmax_layer(x):
     return h_sf
 def getbatch_xy(num):
     path = "/home/linux/Desktop/train/"
-    batch_x = []
-    batch_y = []
+    image_featuremap = []
+    predict_arr = []
+
     for index in range(num):
         cat_path = path + "cat." + str(index) + ".jpg"
         input_image = Tool.load_image(cat_path) #cat
         image_arr = tf.to_float(array(input_image), name='ToFloat')
-       # image_featuremap = tf.reshape(image_arr,[1,image_SIZE,image_SIZE,3])
-        batch_x.append(image_arr)
-        batch_y.append([1,0])
-        print (cat_path)
+        image_featuremap.append(image_arr)
+        predict_arr.append([0.,1.])
+    #print (predict_arr)
+    batch_x = tf.reshape(image_featuremap,[-1,image_SIZE,image_SIZE,3])
+    batch_y = tf.reshape(predict_arr, [-1,2])
+    #print (batch_x)
+    #print (batch_y)
     return batch_x, batch_y
 
-# 这一行设置 gpu 随使用增长，我一般都会加上
-# config.gpu_options.allow_growth = True
-#image process
-
+#因为需要重复输入x，而每建一个x就会生成一个结点，计算图的效率会低。所以使用占位符
 inputRGB = tf.placeholder(tf.float32,[None, image_SIZE,image_SIZE,3])
 classf  = tf.placeholder("float", [None , 2])
 
@@ -136,14 +137,15 @@ layer_data6 =fc_layer(layer_data5, 4096)
 predict = softmax_layer(layer_data6)
 
 cross_entropy = -tf.reduce_sum(classf*tf.log(predict))
-train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy)
+train_step = tf.train.GradientDescentOptimizer(0.1).minimize(cross_entropy)
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+# 这一行设置 gpu 随使用增长，我一般都会加上
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.2)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 sess.run(tf.global_variables_initializer())
 
-for index in range(1000):
-    # print(sess.run(sm_data))
+
+for index in range(1):
     batch_x , batch_y = getbatch_xy(1)#>????????
     sess.run(train_step, feed_dict = {inputRGB: batch_x, classf: batch_y})
-
+sess.close
